@@ -284,3 +284,9 @@ def predict_from_sample(sample, w1, b1, w2, b2):
     a2 = forward_propagation(sample, w1, b1, w2, b2)
     result = get_predictions(a2)
     return result
+
+
+if __name__ == '__main__':
+    w1, b1, w2, b2 = init_params(9, 8, 2)
+    print(w1.shape, b1.shape)
+    print(w2.shape, b2.shape)
