@@ -23,9 +23,9 @@ class DataframeGenerator:
         self.train = self.df.sample(frac=0.8, random_state=25)
         self.test = self.df.drop(self.train.index)
         # Generate csv files with training and testing data
-        self.train.to_csv("../pre-data/Breast-Cancerdata.csv")
+        self.train.to_csv("pre-data\\Breast-Cancer\\train.csv")
         print(f"Training file created successfully as train.csv")
         print(f"# of training examples: {self.train.shape[0]}")
-        self.test.to_csv("../pre-data/test.csv")
+        self.test.to_csv("pre-data\\Breast-Cancer\\test.csv")
         print(f"Training file created successfully as test.csv")
         print(f"# of testing examples: {self.test.shape[0]}")
