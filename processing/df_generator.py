@@ -49,10 +49,13 @@ class DataframeGenerator:
             encoding (str, optional): csv file's encoding type. Defaults to "utf_8".
             na_values (str | int | float, optional): character or number used to define a na value within the dataset. Defaults to '?'.
         """
-        # Data processing variables
-        self.data_folder = os.path.curdir()
-        # Dataframe
-        self.df = self.get_from_csv(source, encoding)
+        # Initialize data
+        self.source = source
+        self.df = pd.read_csv(source, encoding=encoding)
+        self.id_column = self.df.columns[0]
+        # Clean data
+        self.nan_threshold = 20.0
+        self.df = self.clean_data(self.df, self.id_column, self.nan_threshold)
         self.results = None
 
     # Connection to MySQL
@@ -87,35 +90,28 @@ class DataframeGenerator:
         filepath.parent.mkdir(parents=True, exist_ok=True)  
         self.results.to_csv(filepath)
 
-    # Get data from a csv file
-    def get_from_csv(self, data, source, encoding):
-        # Read csv file from source (must be a valid path within the project)
-        data = pd.read_csv(source, encoding=encoding).iloc[:, 1]
-        # Send data to processing stage
-        data = self.process_dataframe()
-        return data
-
-    #Return the percentage of nan values in a column
-    def nan_percentage(self, data, column):
-        return data[column].isna().sum() * 100 / len(self.df)
+    def compute_smd(self, data_1, data_2):
+        data_1 = np.array(data_1)
+        data_2 = np.array(data_2)
+        return np.abs((data_1.mean() - data_2.mean())) / np.sqrt((np.power(data_1.std(), 2) + np.power(data_2.std(), 2)) / 2)
 
     #Imputes the mean, median or mode in the indicated columns depending on the chosen method
-    def impute_data(self, data, columns, method='mean'):
-        for column in columns:
-            #Imputes the mean
-            if method == 'mean':
-                column_mean = data[column].mean()
-                data[column] =data[column].fillna(column_mean)
-            #Imputes the median
-            elif method == 'median':
-                column_median = data[column].median()
-                data[column] = data[column].fillna(column_median)
-            #Imputes the mode
-            elif method == 'mode':
-                column_mode = data[column].mode()
-                data[column] = data[column].fillna(column_mode)
+    def impute_data(self, data, columns):
         return data
+
+    # Process data
+    def clean_data(self, data, id_column, nan_threshold):
+        # Remove duplicates from id column
+        data = data.drop_duplicates(subset=[id_column])
+        # Delete columns with a higher percentage than the missing values threshold
+        if nan_threshold > 1:
+            nan_threshold /= 100
+        data = data.dropna(thresh=data.shape[0] * nan_threshold, how='all', axis=1)
+        # Evaluate feasible imputation techniques for the rest of the columns with missing data
+        nan_columns = data.loc[:, data.isnull().any()].columns
         
+        return data
+
     #Transform non-numerical labels (as long as they are hashable and comparable) to numerical labels
     def label_encoder(self, data, columns):
         for column in columns:
@@ -125,17 +121,3 @@ class DataframeGenerator:
     
     def one_hot_encoder():
         pass
-
-    # Process data
-    def process_dataframe(self, data: pd.DataFrame, nan_threshold):
-        # Remove duplicates from index
-        data = data.drop_duplicates(subset=['PassengerId'])
-        # Evaluate null values depending on the data types and amount of null values
-        nan_columns = data.loc[:, data.isnull().any()].columns
-        for column in nan_columns:
-            # If percentage of nan values are higher the allowed threshold, drop the column
-            if self.nan_percentage(data, column) > nan_threshold:
-                data = data.drop(column)
-            else:
-                # Check which change to df causes the least change in distribution
-                pass
