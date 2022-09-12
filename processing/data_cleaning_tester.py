@@ -17,6 +17,6 @@ def compute_smd(data_1, data_2):
     data_2 = np.array(data_2)
     return np.abs((data_1.mean() - data_2.mean())) / np.sqrt((np.power(data_1.std(), 2) + np.power(data_2.std(), 2)) / 2)
 
-""" sb.heatmap(df.corr(), annot=True)
-plt.show() """
+sb.heatmap(df.corr(), annot=True)
+plt.show()
 df.to_csv(output_file, index=False)
