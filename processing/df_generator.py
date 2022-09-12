@@ -174,7 +174,7 @@ class DataHandler:
         data['InGroup'] = data['Group'].apply(lambda x : x in groups)
         data.drop(['PassengerId', 'Group'], axis=1, inplace=True)
         return data
-    
+
     def process_dataframe(self):
         # Clean data
         self.df.drop('Name', axis=1, inplace=True)
