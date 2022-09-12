@@ -1,45 +1,33 @@
 """
-Equipo: Break the Rules
+Team: Break the Rules
 
-Integrantes del Equipo:
+Team Members:   Eduardo Rodriguez Lopez
+                Diego Armando Ulibarri Hernandez
+                Maria Fernanda Ramirez Barragan
+                Raul Youthan Irigoyen Osorio
+                Renata Montserrat De Luna Flores
+                Roberto Valdez Jasso
 
-Eduardo Rodriguez Lopez
-Diego Armando Ulibarri Hernandez
-Maria Fernanda Ramirez Barragan
-Raul Youthan Irigoyen Osorio
-Renata Montserrat De Luna Flores
-Roberto Valdez Jasso
+Class name: Data Handler
 
-Nombre: Dataframe Generator
+Authors:    Raúl Youthan Irigoyen Osorio
+            Eduardo Rodriguez López
+            María Fernanda Ramirez Barragán
+            Roberto Valdez Jasso
 
-Autor:  Roberto Valdez Jasso
+Creation Date: September 7th, 2022
 
-Fecha de Inicio 06/09/2022
-Fecha de Finalizacion NAN
-
-Descripcrion breve de codigo:
-Este codigo tiene el proposito de generar un dataframe de el csv  Spaceship Titanic  proporcinado
-por  Kaggle.
-
-La siguiente clase tendra lo siguientes  proceso:
-Info
-Corr
-Cleaning
-
+Process dataset, split it into training and testing sets, perform cross-validation and process small samples from users.
 """
-import os
 import pandas as pd
 import numpy as np
 from scipy.stats import ks_2samp
-import matplotlib.pyplot as plt
-import seaborn as sns
 from sklearn.preprocessing import LabelEncoder
-from sklearn.preprocessing import StandardScaler, MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler
 from sklearn.impute import SimpleImputer
-from pathlib import Path
 
 #import servidor
-class DataframeGenerator:
+class DataHandler:
     # Initializer of the class
     def __init__(self, source, encoding = "utf_8"):
         """Initializes a dataframe with certain fixes applied before returning it to the user.
@@ -51,7 +39,6 @@ class DataframeGenerator:
         """
         # Data cleaning variables
         self.nan_threshold = 20.0
-        self.df_mean = 0.0
         # Initialize data
         self.source = source
         self.df = pd.read_csv(source, encoding=encoding)
@@ -200,10 +187,9 @@ class DataframeGenerator:
         self.df.drop('Transported', axis=1, inplace=True)
         self.df.insert(self.df.shape[1], 'Transported', temp_column)
 
-
     def process_sample(self, data, id_column):
         data.drop('Name', axis=1, inplace=True)
-        self.clean_sample(self.id_column, self.nan_threshold)
-        self.df = self.engineer_data(self.df)
-        self.df = self.encode_cat_data(self.df, ['CryoSleep', 'VIP', 'Transported', 'Deck', 'Side', 'InGroup'], ['HomePlanet', 'Destination'])
+        data = self.clean_sample(data, id_column, self.nan_threshold)
+        data = self.engineer_data(self.df)
+        data = self.encode_cat_data(self.df, ['CryoSleep', 'VIP', 'Transported', 'Deck', 'Side', 'InGroup'], ['HomePlanet', 'Destination'])
         return data

@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 data_file = os.path.join(os.path.abspath(os.path.curdir), 'data', 'train.csv')
 output_file = os.path.join(os.path.abspath(os.path.curdir), 'data', 'current_df.csv')
 
-df_gen = dfg.DataframeGenerator(data_file)
+df_gen = dfg.DataHandler(data_file)
 df = df_gen.df
 
 
