@@ -39,12 +39,11 @@ class DataHandler:
         """
         # Data cleaning variables
         self.nan_threshold = nan_threshold
-        self.ordinal_columns = ['CryoSleep', 'VIP', 'Transported', 'Deck', 'Side', 'InGroup']
+        self.ordinal_columns = ['CryoSleep', 'VIP', 'Transported', 'Deck', 'Side']
         self.non_ordinal_columns = ['HomePlanet', 'Destination']
         # Initialize data
         self.df = pd.read_csv(csv_path, encoding=encoding)
-        self.id_column = self.df.columns[id_index]
-        self.process_dataframe()
+        self.df = self.process_data(self.df, id_index)
 
     def compute_smd(self, data_1, data_2):
         data_1 = np.array(data_1)
@@ -92,19 +91,20 @@ class DataHandler:
         return data
 
     # Process the original dataframe
-    def clean_dataframe(self, id_column, nan_threshold):
+    def clean_data(self, data, id_column, nan_threshold):
         # Remove duplicates from id column
-        self.df = self.df.drop_duplicates(subset=[id_column])
+        data = data.drop_duplicates(subset=[id_column])
         # Delete columns with a higher percentage than the allowed missing values threshold
         if nan_threshold > 1:
             nan_threshold /= 100
-        self.df = self.df.dropna(thresh=self.df.shape[0] * nan_threshold, how='all', axis=1)
+        data = data.dropna(thresh=data.shape[0] * nan_threshold, how='all', axis=1)
         # Perform imputation on numerical attributes with nans
-        num_data = self.df.select_dtypes(include=np.number)
-        self.df= self.impute_num_data(self.df, num_data.columns[num_data.isna().any()].tolist())
+        num_data = data.select_dtypes(include=np.number)
+        data= self.impute_num_data(data, num_data.columns[num_data.isna().any()].tolist())
         # Impute categorical data using most frequent values
-        cat_cols= self.df.select_dtypes(exclude=np.number).columns
-        self.df = self.impute_cat_data(self.df, cat_cols)
+        cat_cols= data.select_dtypes(exclude=np.number).columns
+        data = self.impute_cat_data(data, cat_cols)
+        return data
 
     #Transform ordinal attributes (as long as they are hashable and comparable) into numerical labels
     def label_encode(self, data, columns):
@@ -123,8 +123,11 @@ class DataHandler:
         return data
 
     # Encode the data's categorical attributes
-    def encode_cat_data(self, data, label_cols, one_hot_cols):
+    def encode_cat_data(self, data, label_cols, one_hot_cols, sample=False):
         # Perform label encoding
+        if sample:
+            if 'Transported' in label_cols:
+                label_cols.remove('Transported')
         data = self.label_encode(data, label_cols)
         # Perform one hot encoding
         data = self.one_hot_encode(data, one_hot_cols)
@@ -144,7 +147,7 @@ class DataHandler:
         data['PassengerNumber'] = split_id_data[1]
         # Make column to determine if passengers are in groups or not
         groups = set(data[data.groupby('Group')['Group'].transform('size') > 1]['Group'])
-        data['InGroup'] = data['Group'].apply(lambda x : x in groups)
+        data['InGroup'] = data['Group'].apply(lambda x : 1 if x in groups else 0)
         data.drop(['PassengerId', 'Group'], axis=1, inplace=True)
         # Make TotalSpent column by getting the sum of all services per passenger
         service_columns = ['RoomService', 'FoodCourt', 'ShoppingMall', 'Spa', 'VRDeck']
@@ -157,30 +160,21 @@ class DataHandler:
         return data
 
     # Process original data before uploading to database
-    def process_dataframe(self):
+    def process_data(self, data, id_index, sample=False):
+        # Check data type
+        if isinstance(data, str):
+            data = pd.read_csv(data)
+        # Get id column
+        id_column = data.columns[id_index]
         # Clean data
-        self.df.drop('Name', axis=1, inplace=True)
-        self.clean_dataframe(self.id_column, self.nan_threshold)
-        # Perform feature engineering
-        self.df = self.engineer_data(self.df)
-        self.df = self.encode_cat_data(self.df, self.ordinal_columns, self.non_ordinal_columns)
-        # Move results column to the rightmost position
-        temp_column = self.df['Transported']
-        self.df.drop('Transported', axis=1, inplace=True)
-        self.df.insert(self.df.shape[1], 'Transported', temp_column)
-
-    # Process a single sample
-    def process_sample(self, path, id_column):
-        # Read sample from csv
-        data = pd.read_csv(path)
-        # Clean sample
         data.drop('Name', axis=1, inplace=True)
-        data = self.clean_sample(data, id_column, self.nan_threshold)
+        data = self.clean_data(data, id_column, self.nan_threshold)
         # Perform feature engineering
         data = self.engineer_data(data)
-        data = self.encode_cat_data(data, self.ordinal_columns, self.non_ordinal_columns)
+        data = self.encode_cat_data(data, self.ordinal_columns, self.non_ordinal_columns, sample=sample)
         # Move results column to the rightmost position
-        temp_column = data['Transported']
-        data.drop('Transported', axis=1, inplace=True)
-        data.insert(data.shape[1], 'Transported', temp_column)
+        if not sample:
+            temp_column = data['Transported']
+            data.drop('Transported', axis=1, inplace=True)
+            data.insert(data.shape[1], 'Transported', temp_column)
         return data
