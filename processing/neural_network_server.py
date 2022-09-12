@@ -1,7 +1,7 @@
 import os
 import joblib
 import numpy as np
-from df_generator import DataframeGenerator
+from df_generator import DataHandler
 
 w1, b1, w2, b2 = 0, 0, 0, 0
 
@@ -269,7 +269,7 @@ def process_data(data):
 
 def fit():
     # Import dataframe
-    df_gen = DataframeGenerator("../pre-data/Breast-Cancer/breast-cancer-wisconsin.data")
+    df_gen = DataHandler("../pre-data/Breast-Cancer/breast-cancer-wisconsin.data")
     df = process_data(df_gen.train)
     # Split dataframe into separate arrays
     x = df.drop('diagnosis', axis=1).to_numpy().T

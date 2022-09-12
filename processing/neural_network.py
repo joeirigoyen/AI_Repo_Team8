@@ -1,5 +1,5 @@
 import numpy as np
-from df_generator import DataframeGenerator
+from df_generator import DataHandler
 
 
 def relu(z):
@@ -111,7 +111,7 @@ def process_data(data, label_colname, unwanted_cols=None):
 
 
 def fit():
-    df_gen = DataframeGenerator("pre-data\\Breast-Cancer\\breast-cancer-wisconsin.data")
+    df_gen = DataHandler("pre-data\\Breast-Cancer\\breast-cancer-wisconsin.data")
     df = process_data(df_gen.train, 'Diagnosis', unwanted_cols=[0])
     x = df.drop('Diagnosis', axis=1).to_numpy().T
     print(x.shape)
