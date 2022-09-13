@@ -157,6 +157,8 @@ class DataHandler:
         data['TotalSpent'] = data['TotalSpent'].apply(lambda x : 0 if 0 <= x < 750 else 1 if 750 <= x < 1200 else 2 if 1200 <= x < 2500 else 3)
         # Categorize age column
         data['Age'] = data['Age'].apply(lambda x : 0 if 0 <= x < 2 else 1 if 2 <= x < 5 else 2 if 5 <= x < 13 else 3 if 13 <= x < 20 else 4 if 20 <= x < 40 else 5 if 40 <= x < 60 else 6)
+        # Remove unnecessary columns
+        data.drop('PassengerNumber', axis=1, inplace=True)
         return data
 
     # Process original data before uploading to database
