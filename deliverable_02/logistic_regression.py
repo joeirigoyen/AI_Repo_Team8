@@ -4,11 +4,19 @@ from sklearn.ensemble import GradientBoostingClassifier
 
 
 class LogisticRegressionModel:
-    def __init__(self, x, y, fit_intercept, intercept_scaling, random_state, max_iter):
+    """
+    Params:
+
+    random_state[int] = Used when solver == 'sag', 'saga' or 'liblinear' to shuffle the data. 
+                        RandomState instance, default=None
+    max_iter[int] = Maximum number of iterations taken for the solvers to converge. default=100
+    """
+
+    def __init__(self, x, y, random_state, max_iter):
         self.x = x
         self.y = y
         self.lr = LogisticRegression(
-            fit_intercept=fit_intercept, intercept_scaling=intercept_scaling, random_state=random_state, solve='liblinear', max_iter=max_iter)
+            random_state=random_state, solve='liblinear', max_iter=max_iter)
 
     def adjust(self):
         self.lr.fit(self.x, self.y)
