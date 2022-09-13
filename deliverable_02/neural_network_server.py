@@ -1,9 +1,10 @@
 import os
-import joblib
+import sys
 import numpy as np
-from df_generator import DataHandler
+from data_handler import DataHandler
 
 w1, b1, w2, b2 = 0, 0, 0, 0
+
 
 # Activation functions
 def relu(z):
@@ -244,42 +245,6 @@ def show_predictions(x_data, y_data, w1, b1, w2, b2, index):
     print(f"Label: {label}")
 
 
-def process_data(data):
-    """Fix data in order for it to be properly normalized and structured.
-
-    Args:
-        data (DataFrame): the original dataset
-
-    Returns:
-        data (DataFrame): the fixed dataset
-    """
-    # Clean dataframe from unwanted columns and assign them new column names
-    data = data.drop(0, axis=1)
-    # Move diagnosis column to be the first column
-    diagnosis_col = data.pop(10)
-    data.insert(0, 'diagnosis', diagnosis_col)
-    # Apply function to diagnosis column for it to represent boolean values instead of 2s and 4s
-    data['diagnosis'] = data['diagnosis'].apply(lambda x: 1 if x == 4 else 0)
-    # Normalize columns
-    for colname in data.drop('diagnosis', axis=1).columns:
-        col_max, col_min = data[colname].max(), data[colname].min()
-        data[colname] = (data[colname] - col_min)  / (col_max - col_min)
-    return data
-
-
-def fit():
-    # Import dataframe
-    df_gen = DataHandler("../pre-data/Breast-Cancer/breast-cancer-wisconsin.data")
-    df = process_data(df_gen.train)
-    # Split dataframe into separate arrays
-    x = df.drop('diagnosis', axis=1).to_numpy().T
-    y = df['diagnosis'].to_numpy()
-    # Run the model
-    first_layer_neurons, second_layer_neurons = 8, 2
-    w1, b1, w2, b2 = gradient_descent(x, y, 0.001, 10000, first_layer_neurons, second_layer_neurons)
-    return w1, b1, w2, b2
-
-
 def predict_from_sample(sample, w1, b1, w2, b2):
     a2 = forward_propagation(sample, w1, b1, w2, b2)
     result = get_predictions(a2)
@@ -287,7 +252,18 @@ def predict_from_sample(sample, w1, b1, w2, b2):
 
 
 if __name__ == '__main__':
-    w1, b1, w2, b2 = init_params(9, 8, 2)
-
-    print(w1.shape, b1.shape)
-    print(w2.shape, b2.shape)
+    # Get dataframe
+    train_path = os.path.join(os.path.abspath(sys.path[0]), "train.csv")
+    df = DataHandler(train_path).df
+    # Make numpy arrays from dataframe
+    x = df.drop('Transported', axis=1)
+    y = df.drop(x.columns, axis=1)
+    print(x.dtypes)
+    x = x.to_numpy()
+    y = y.to_numpy()
+    # Train model
+    first_layer_neurons = 14
+    second_layer_neurons = 2
+    learning_rate = 0.001
+    epochs = 10000
+    w1, b1, w2, b2 = gradient_descent(x.T, y, learning_rate, epochs, first_layer_neurons, second_layer_neurons)

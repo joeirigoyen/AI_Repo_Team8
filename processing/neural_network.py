@@ -1,5 +1,5 @@
 import numpy as np
-from df_generator import DataHandler
+from data_handler import DataHandler
 
 
 def relu(z):

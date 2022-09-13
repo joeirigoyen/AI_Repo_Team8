@@ -3,7 +3,7 @@ import csv
 from flask import Flask, request, jsonify
 
 
-from processing.df_generator import DataHandler
+from processing.data_handler import DataHandler
 
 server = Flask(__name__)
 
