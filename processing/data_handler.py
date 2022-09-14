@@ -25,11 +25,12 @@ from scipy.stats import ks_2samp
 from sklearn.preprocessing import LabelEncoder
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.impute import SimpleImputer
+from imblearn.over_sampling import SMOTE
 
 #import servidor
 class DataHandler:
     # Initializer of the class
-    def __init__(self, csv_path, encoding = "utf_8", nan_threshold=20.0, id_index=0):
+    def __init__(self, csv_path, encoding = "utf_8", nan_threshold=20.0, id_index=0, result_label='Transported'):
         """Initializes a dataframe with certain fixes applied before returning it to the user.
         Args:
             csv_file_train (str): the path to the data csv train file
@@ -39,8 +40,11 @@ class DataHandler:
         """
         # Data cleaning variables
         self.nan_threshold = nan_threshold
-        self.ordinal_columns = ['CryoSleep', 'VIP', 'Transported', 'Deck', 'Side']
-        self.non_ordinal_columns = ['HomePlanet', 'Destination']
+        self.ordinal_columns = ['VIP', 'Transported', 'Deck']
+        self.non_ordinal_columns = ['CryoSleep', 'HomePlanet', 'Destination', 'Side']
+        # Data engineering variables
+        self.relevant_columns = []
+        self.result_label = result_label
         # Initialize data
         self.df = pd.read_csv(csv_path, encoding=encoding)
         self.df = self.process_data(self.df, id_index)
@@ -55,7 +59,6 @@ class DataHandler:
         for column in columns:
             # Original values
             techniques = [data[column].mean(), data[column].median(), data[column].mode()[0]]
-            tech_names = ['mean', 'median', 'mode']
             # Use the technique with the highest p-value
             max_p_value = signif_level
             max_index = -1
@@ -126,14 +129,15 @@ class DataHandler:
     def encode_cat_data(self, data, label_cols, one_hot_cols, sample=False):
         # Perform label encoding
         if sample:
-            if 'Transported' in label_cols:
-                label_cols.remove('Transported')
+            if self.result_label in label_cols:
+                label_cols.remove(self.result_label)
         data = self.label_encode(data, label_cols)
         # Perform one hot encoding
         data = self.one_hot_encode(data, one_hot_cols)
         data.drop(one_hot_cols, axis=1, inplace=True)
         return data
 
+    # Alter columns so that they can be interpreted more easily by the models (dataset specific)
     def engineer_data(self, data):
         # Split cabin into parts and delete original column
         split_cabin_data = data['Cabin'].str.split('/', n=2, expand=True)
@@ -157,8 +161,29 @@ class DataHandler:
         data['TotalSpent'] = data['TotalSpent'].apply(lambda x : 0 if 0 <= x < 750 else 1 if 750 <= x < 1200 else 2 if 1200 <= x < 2500 else 3)
         # Categorize age column
         data['Age'] = data['Age'].apply(lambda x : 0 if 0 <= x < 2 else 1 if 2 <= x < 5 else 2 if 5 <= x < 13 else 3 if 13 <= x < 20 else 4 if 20 <= x < 40 else 5 if 40 <= x < 60 else 6)
+        # Separate by name initials
+        data['NameInitials'] = data['Name'].apply(lambda name : ord(name.split(' ')[0][0].lower()) - 96)
+        data['LastNameInitials'] = data['Name'].apply(lambda name : ord(name.split(' ')[1][0].lower()) - 96)
         # Remove unnecessary columns
-        data.drop('PassengerNumber', axis=1, inplace=True)
+        data.drop(['PassengerNumber', 'Name'], axis=1, inplace=True)
+        return data
+
+    # Perform oversampling to reduce minority class omission
+    def oversample_data(self, data, result_label):
+        smote = SMOTE(random_state=42)
+        x = data.drop(result_label, axis=1)
+        y = data[result_label]
+        resampled_x, resampled_y = smote.fit_resample(x, y)
+        data = pd.concat([resampled_x, resampled_y], axis=1)
+        return data
+
+    # Select the n most correlated features
+    def select_features(self, data: pd.DataFrame, result_label, top_features=10, sample=False):
+        if not sample:
+            top_corr_indices = data.corr().abs().nlargest(top_features + 1, result_label)[result_label].index
+            top_corr_indices = top_corr_indices.drop(result_label)
+            self.relevant_columns = top_corr_indices
+        data = pd.concat([data[self.relevant_columns], data[result_label]], axis=1)
         return data
 
     # Process original data before uploading to database
@@ -169,14 +194,19 @@ class DataHandler:
         # Get id column
         id_column = data.columns[id_index]
         # Clean data
-        data.drop('Name', axis=1, inplace=True)
-        data = self.clean_data(data, id_column, self.nan_threshold)
+        if not sample:
+            data = self.clean_data(data, id_column, self.nan_threshold)
         # Perform feature engineering
+        data['CryoSleep'] = data['CryoSleep'].apply(lambda val: "CryoSlept" if val else "NoCryoSleep")
         data = self.engineer_data(data)
         data = self.encode_cat_data(data, self.ordinal_columns, self.non_ordinal_columns, sample=sample)
-        # Move results column to the rightmost position
+        # Move Transported column to the rightmost position
         if not sample:
-            temp_column = data['Transported']
-            data.drop('Transported', axis=1, inplace=True)
-            data.insert(data.shape[1], 'Transported', temp_column)
+            temp_column = data[self.result_label]
+            data.drop(self.result_label, axis=1, inplace=True)
+            data.insert(data.shape[1], self.result_label, temp_column)
+            # Oversample data
+            data = self.oversample_data(data, self.result_label)
+        # Get the most correlated columns
+        data = self.select_features(data, self.result_label, sample=sample, top_features=11)
         return data
