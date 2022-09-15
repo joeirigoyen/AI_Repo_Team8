@@ -34,7 +34,7 @@ pipelines = [Pipeline([('GaussianNB', GaussianNB())]),
             Pipeline([('LGBMClassifier', LGBMClassifier())]),
             Pipeline([('LogisticRegression', LogisticRegression(solver='liblinear', max_iter=3000))]),
             Pipeline([('AdaBoostClassifier', AdaBoostClassifier())]),
-            Pipeline([('CatBoostClassifier', CatBoostClassifier(verbose=0))])]
+            Pipeline([('CatBoostClassifier', CatBoostClassifier(verbose=0, one_hot_max_size=10))])]
 
 # Declare parent data directory
 data_location = os.path.join(os.path.abspath(os.path.curdir), 'data')
@@ -71,12 +71,12 @@ for key, value in sorted(pipe_results.items(), key=lambda item : item[1]):
     print(key, value)
 
 # Apply grid search on the top performing models
-cat_booster = CatBoostClassifier(eval_metric='accuracy', verbose=0)
+""" cat_booster = CatBoostClassifier(eval_metric='accuracy', verbose=0)
 cat_booster_params = {
     'learning_rate' : [0.001, 0.005, 0.01, 0.02, 0.03],
     'depth' : [5, 6, 7, 8, 10],
     'iterations' : [500, 750, 1000, 1250, 2000]
-}
+} """
 
 """ cv = StratifiedKFold(n_splits=5, shuffle=True)
 bayes_search = BayesSearchCV(estimator=cat_booster, search_spaces=cat_booster_params, scoring='Accuracy', cv=cv, n_jobs=-1, n_iter=3000, verbose=0, refit=True).fit(x_train, y_train)
