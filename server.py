@@ -29,8 +29,8 @@ def input_data():
     test_path= os.path.join(os.path.abspath(os.path.curdir), "tmp", "test.csv")
     train_path= os.path.join(os.path.abspath(os.path.curdir), "data", "train.csv")
     dh = DataHandler(train_path)
-    sample = dh.process_data(test_path, 0, sample=True)
-    print(sample)
+    
+    sample = dh.process_sample(test_path)
 
     lr = load('logistic_regression.joblib') 
     rf = load('random_forest.joblib') 
@@ -43,7 +43,15 @@ def input_data():
     elif (model == 'SVM'):
         res = svm.predict(sample)
 
-    return jsonify({"message": "Success", "res": res}), 200
+    results = []
+    for elem in res:
+        results.append(int(elem))
+
+    for i in range(len(passengers)):
+        passengers[i]["Result"] = results[i]
+
+    return jsonify({"Message": "Success", "Passengers": passengers}), 200
+
 
 @server.route('/init', methods=['POST'])
 def initialize_data():
@@ -51,6 +59,7 @@ def initialize_data():
     dh = DataHandler(train_path)
     df = dh.df
     x = df.drop('Transported', axis=1)
+    print(x.shape)
     y = df['Transported']
     svm = SupportVectorMachine(x, y, 1000)
     svm.fit()

@@ -45,15 +45,13 @@ class DataHandler:
         self.non_ordinal_columns = ['VIP', 'Deck', 'CryoSleep', 'HomePlanet', 'Destination', 'Side']
         # Data engineering variables
         self.relevant_columns = []
+        self.curr_columns = []
         self.result_label = result_label
         # Initialize data
+        self.original_df = pd.read_csv(csv_path, encoding=encoding)
         self.df = pd.read_csv(csv_path, encoding=encoding)
         self.df = self.process_data(self.df, id_index)
 
-    def compute_smd(self, data_1, data_2):
-        data_1 = np.array(data_1)
-        data_2 = np.array(data_2)
-        return np.abs((data_1.mean() - data_2.mean())) / np.sqrt((np.power(data_1.std(), 2) + np.power(data_2.std(), 2)) / 2)
 
     #Imputes the mean, median or mode in the indicated columns depending on the chosen method
     def impute_num_data(self, data, columns, signif_level=0.05):
@@ -127,11 +125,8 @@ class DataHandler:
         return data
 
     # Encode the data's categorical attributes
-    def encode_cat_data(self, data, label_cols, one_hot_cols, sample=False):
+    def encode_cat_data(self, data, label_cols, one_hot_cols):
         # Perform label encoding
-        if sample:
-            if self.result_label in label_cols:
-                label_cols.remove(self.result_label)
         data = self.label_encode(data, label_cols)
         # Perform one hot encoding
         data = self.one_hot_encode(data, one_hot_cols)
@@ -153,14 +148,6 @@ class DataHandler:
         # Make column to determine if passengers are in groups or not
         groups = set(data[data.groupby('Group')['Group'].transform('size') > 1]['Group'])
         data['InGroup'] = data['Group'].apply(lambda x : 1 if x in groups else 0)
-        # Determine how many passengers are in each group
-        groups = pd.Series(data['Group'].unique()).values
-        members = pd.Series(data.groupby('Group')['Group'].value_counts().values).values
-        group_dict = {}
-        for group, num in zip(groups, members):
-            group_dict[group] = num
-        data['GroupMembers'] = data['Group'].apply(lambda g : group_dict[g])
-        data.drop(['PassengerId', 'Group'], axis=1, inplace=True)
         # Make TotalSpent column by getting the sum of all services per passenger
         service_columns = ['RoomService', 'FoodCourt', 'ShoppingMall', 'Spa', 'VRDeck']
         data['TotalSpent'] = data[service_columns].sum(axis=1)
@@ -172,43 +159,39 @@ class DataHandler:
     def oversample_data(self, data, result_label):
         smote = SMOTE(random_state=42)
         x = data.drop(result_label, axis=1)
-        y = data[result_label]
+        y = data[result_label].apply(lambda val : 1 if val else 0)
         resampled_x, resampled_y = smote.fit_resample(x, y)
         data = pd.concat([resampled_x, resampled_y], axis=1)
         return data
 
     # Select the n most correlated features
-    def select_features(self, data: pd.DataFrame, result_label, top_features=10, sample=False):
-        if not sample:
-            top_corr_indices = data.corr().abs().nlargest(top_features + 1, result_label)[result_label].index
-            top_corr_indices = top_corr_indices.drop(result_label)
-            self.relevant_columns = top_corr_indices
-            data = pd.concat([data[self.relevant_columns], data[result_label]], axis=1)
-        else:
-            data = data[self.relevant_columns]
+    def select_features(self, data: pd.DataFrame, result_label, top_features=10):
+        top_corr_indices = data.corr().abs().nlargest(top_features + 1, result_label)[result_label].index
+        top_corr_indices = top_corr_indices.drop(result_label)
+        self.relevant_columns = top_corr_indices
+        data = pd.concat([data[self.relevant_columns], data[result_label]], axis=1)
         return data
 
     # Process original data before uploading to database
-    def process_data(self, data, id_index, sample=False):
+    def process_data(self, data, sample=False):
         # Check data type
         if isinstance(data, str):
             data = pd.read_csv(data)
-        # Get id column
-        id_column = data.columns[id_index]
-        # Clean data
-        data = self.clean_data(data, id_column, self.nan_threshold)
+        # Clean data if needed
+        if not sample:
+            data = self.clean_data(data, data.columns[0], self.nan_threshold)
         # Perform feature engineering
         for column in ['RoomService', 'FoodCourt', 'ShoppingMall', 'Spa', 'VRDeck']:
             data.loc[data['CryoSleep'] == True, column] = 0.0
         data['CryoSleep'] = data['CryoSleep'].apply(lambda val: "CryoSlept" if val else "NoCryoSleep")
         data['VIP'] = data['VIP'].apply(lambda val: "IsVIP" if val else "NotVIP")
         data = self.engineer_data(data)
-        data = self.encode_cat_data(data, self.ordinal_columns, self.non_ordinal_columns, sample=sample)
+        data = self.encode_cat_data(data, self.ordinal_columns, self.non_ordinal_columns)
         # Move Transported column to the rightmost position
+        temp_column = data[self.result_label]
+        data.drop(self.result_label, axis=1, inplace=True)
+        data.insert(data.shape[1], self.result_label, temp_column)
         if not sample:
-            temp_column = data[self.result_label]
-            data.drop(self.result_label, axis=1, inplace=True)
-            data.insert(data.shape[1], self.result_label, temp_column)
             # Process outliers
             factor = LocalOutlierFactor(contamination=0.01)
             outliers = factor.fit_predict(data)
@@ -216,5 +199,19 @@ class DataHandler:
             # Oversample data
             data = self.oversample_data(data, self.result_label)
         # Get the most correlated columns
-        data = self.select_features(data, self.result_label, sample=sample, top_features=15)
+        data = self.select_features(data, self.result_label, top_features=15)
         return data
+
+    # Process sample before uploading to database
+    def process_sample(self, sample):
+        # Check data type
+        if isinstance(sample, str):
+            sample = pd.read_csv(sample)
+        self.original_df = self.clean_data(self.original_df, 'PassengerId', 20.0)
+        n_train = self.original_df.shape[0]
+        sample['Transported'] = pd.Series(np.zeros(sample.shape[0])).apply(lambda x : bool(x))
+        sample = pd.concat([self.original_df, sample])
+        sample = self.process_data(sample, sample=True)
+        sample = sample[n_train:]
+        sample.drop('Transported', axis=1, inplace=True)
+        return sample

@@ -85,7 +85,7 @@ print(best_cat_params) """
 
 # Get test sample
 test_passengers = pd.read_csv(os.path.join(data_location, 'test.csv'))['PassengerId']
-x_test = handler.process_data(os.path.join(data_location, 'test.csv'), 0, sample=True)
+x_test = handler.process_sample(os.path.join(data_location, 'test.csv'))
 x_test.to_csv(os.path.join(data_location, 'test_processed.csv'), index=False)
 
 # Make predictions with best model

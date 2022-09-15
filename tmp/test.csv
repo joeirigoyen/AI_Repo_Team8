@@ -1,0 +1,3 @@
+PassengerId,HomePlanet,CryoSleep,Cabin,Destination,Age,VIP,RoomService,FoodCourt,ShoppingMall,Spa,VRDeck,Name
+99999_01,Earth,False,A/0/P,55 Cancri e,40,True,56.0,0.0,20.0,300.0,1.0,TEST
+99999_02,Earth,False,A/0/S,55 Cancri e,40,True,6.0,0.0,0.0,350.0,0.0,TEST2
