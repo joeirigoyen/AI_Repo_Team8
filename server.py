@@ -32,7 +32,7 @@ def input_data():
 
     test_path= os.path.join(os.path.abspath(os.path.curdir), "tmp", "test.csv")
     train_path= os.path.join(os.path.abspath(os.path.curdir), "data", "train.csv")
-    dh = DataHandler(train_path)
+    """ dh = DataHandler(train_path)
     print("here1")
     sample = dh.process_sample(test_path)
     print("here2")
@@ -53,7 +53,7 @@ def input_data():
     print("here4")
     for i in range(len(passengers)):
         passengers[i]["Result"] = results[i]
-    print("here5")
+    print("here5") """
     return jsonify({"Message": "Success", "Passengers": passengers}), 200
 
 
