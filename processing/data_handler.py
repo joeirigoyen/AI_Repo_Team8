@@ -210,9 +210,9 @@ class DataHandler:
             data.drop(self.result_label, axis=1, inplace=True)
             data.insert(data.shape[1], self.result_label, temp_column)
             # Process outliers
-            """ factor = LocalOutlierFactor(contamination=0.025)
+            factor = LocalOutlierFactor(contamination=0.01)
             outliers = factor.fit_predict(data)
-            data = data[np.where(outliers == 1, True, False)] """
+            data = data[np.where(outliers == 1, True, False)]
             # Oversample data
             data = self.oversample_data(data, self.result_label)
         # Get the most correlated columns
