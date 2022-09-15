@@ -33,13 +33,13 @@ def input_data():
     test_path= os.path.join(os.path.abspath(os.path.curdir), "tmp", "test.csv")
     train_path= os.path.join(os.path.abspath(os.path.curdir), "data", "train.csv")
     dh = DataHandler(train_path)
-    print("here1")
+    server.logger.debug("Debug log level")
     sample = dh.process_sample(test_path)
-    print("here2")
-    """ lr = load('logistic_regression.joblib') 
+
+    lr = load('logistic_regression.joblib') 
     rf = load('random_forest.joblib') 
     svm = load('svm.joblib')
-    print("here3")
+
     if (model == 'LogisticRegression'):
         res = lr.predict(sample)
     elif (model == 'RandomForest'):
@@ -50,10 +50,9 @@ def input_data():
     results = []
     for elem in res:
         results.append(int(elem))
-    print("here4")
     for i in range(len(passengers)):
         passengers[i]["Result"] = results[i]
-    print("here5") """
+
     return jsonify({"Message": "Success", "Passengers": passengers}), 200
 
 
