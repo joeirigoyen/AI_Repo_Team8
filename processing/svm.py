@@ -1,5 +1,5 @@
 from sklearn import svm
-
+from joblib import dump
 
 class SupportVectorMachine:
 
@@ -10,6 +10,7 @@ class SupportVectorMachine:
 
     def fit(self):
         self.solver.fit(self.x, self.y)
+        dump(self.solver, 'svm.joblib')
 
     def predict(self, sample):
         self.predict(sample)

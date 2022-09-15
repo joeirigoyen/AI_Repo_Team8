@@ -1,5 +1,5 @@
 from sklearn.linear_model import LogisticRegression
-
+from joblib import dump
 
 class LogisticRegressionModel:
     """
@@ -13,11 +13,12 @@ class LogisticRegressionModel:
     def __init__(self, x, y, random_state, max_iter):
         self.x = x
         self.y = y
-        self.regressor = LogisticRegression(
-            random_state=random_state, solve='liblinear', max_iter=max_iter)
+        self.solver = LogisticRegression(
+            random_state=random_state, solver='liblinear', max_iter=max_iter)
 
     def adjust(self):
-        self.regressor.fit(self.x, self.y)
+        self.solver.fit(self.x, self.y)
+        dump(self.solver, 'logistic_regression.joblib')
 
     def predict(self, sample):
-        return self.regressor.predict(sample)
+        return self.solver.predict(sample)
