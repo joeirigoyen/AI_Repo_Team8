@@ -32,11 +32,11 @@ def input_data():
 
     test_path= os.path.join(os.path.abspath(os.path.curdir), "tmp", "test.csv")
     train_path= os.path.join(os.path.abspath(os.path.curdir), "data", "train.csv")
-    """ dh = DataHandler(train_path)
+    dh = DataHandler(train_path)
     print("here1")
     sample = dh.process_sample(test_path)
     print("here2")
-    lr = load('logistic_regression.joblib') 
+    """ lr = load('logistic_regression.joblib') 
     rf = load('random_forest.joblib') 
     svm = load('svm.joblib')
     print("here3")
