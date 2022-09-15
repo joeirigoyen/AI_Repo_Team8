@@ -10,6 +10,10 @@ from joblib import load
 
 server = Flask(__name__)
 
+@server.route('/test', methods=['GET'])
+def test():
+    return jsonify({"Message": "Welcome"}), 200
+
 
 @server.route('/form', methods=['POST'])
 def input_data():
