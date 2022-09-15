@@ -7,9 +7,10 @@ import matplotlib.pyplot as plt
 
 data_file = os.path.join(os.path.abspath(os.path.curdir), 'data', 'train.csv')
 output_file = os.path.join(os.path.abspath(os.path.curdir), 'data', 'current_df.csv')
+data_location = os.path.join(os.path.abspath(os.path.curdir), 'data')
 
-df_gen = dh.DataHandler(data_file)
-df = df_gen.df
+handler = dh.DataHandler(data_file)
+df = handler.df
 
 
 def compute_smd(data_1, data_2):
@@ -21,11 +22,25 @@ sb.heatmap(df.corr(), annot=True)
 # Get data before resampling
 data_x = df.drop('Transported', axis=1)
 data_y = df['Transported']
-# Get data after resampling
-rs_data = df_gen.oversample_data(df, 'Transported')
-rs_data_y = rs_data['Transported']
 # Plot data
-sb.kdeplot(data_y, label='Original', color='red')
-sb.kdeplot(rs_data_y, label='Oversampled', color='blue')
 plt.show()
 df.to_csv(output_file, index=False)
+
+
+# Get test sample
+""" x_test = handler.process_data(os.path.join(data_location, 'test.csv'), 0, sample=True)
+print(x_test.isna().value_counts())
+x_test.to_csv(os.path.join(data_location, 'test_processed.csv'), index=False) """
+
+""" # Test group count
+data_x = df.drop('Transported', axis=1)
+data_y = df['Transported']
+groups = pd.Series(data_x['Group'].unique()).values
+members = pd.Series(data_x.groupby('Group')['Group'].value_counts().values).values
+
+group_dict = {}
+
+for group, num in zip(groups, members):
+    group_dict[group] = num
+
+data_x['GroupMembers'] = data_x['Group'].apply(lambda g : group_dict[g]) """

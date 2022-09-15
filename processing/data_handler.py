@@ -25,6 +25,7 @@ from scipy.stats import ks_2samp
 from sklearn.preprocessing import LabelEncoder
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.impute import SimpleImputer
+from sklearn.neighbors import LocalOutlierFactor
 from imblearn.over_sampling import SMOTE
 
 #import servidor
@@ -40,8 +41,8 @@ class DataHandler:
         """
         # Data cleaning variables
         self.nan_threshold = nan_threshold
-        self.ordinal_columns = ['VIP', 'Transported', 'Deck']
-        self.non_ordinal_columns = ['CryoSleep', 'HomePlanet', 'Destination', 'Side']
+        self.ordinal_columns = ['Transported']
+        self.non_ordinal_columns = ['VIP', 'Deck', 'CryoSleep', 'HomePlanet', 'Destination', 'Side']
         # Data engineering variables
         self.relevant_columns = []
         self.result_label = result_label
@@ -152,18 +153,17 @@ class DataHandler:
         # Make column to determine if passengers are in groups or not
         groups = set(data[data.groupby('Group')['Group'].transform('size') > 1]['Group'])
         data['InGroup'] = data['Group'].apply(lambda x : 1 if x in groups else 0)
+        # Determine how many passengers are in each group
+        groups = pd.Series(data['Group'].unique()).values
+        members = pd.Series(data.groupby('Group')['Group'].value_counts().values).values
+        group_dict = {}
+        for group, num in zip(groups, members):
+            group_dict[group] = num
+        data['GroupMembers'] = data['Group'].apply(lambda g : group_dict[g])
         data.drop(['PassengerId', 'Group'], axis=1, inplace=True)
         # Make TotalSpent column by getting the sum of all services per passenger
         service_columns = ['RoomService', 'FoodCourt', 'ShoppingMall', 'Spa', 'VRDeck']
         data['TotalSpent'] = data[service_columns].sum(axis=1)
-        data.drop(service_columns, axis=1, inplace=True)
-        # Use ranges to categorize service columns
-        data['TotalSpent'] = data['TotalSpent'].apply(lambda x : 0 if 0 <= x < 750 else 1 if 750 <= x < 1200 else 2 if 1200 <= x < 2500 else 3)
-        # Categorize age column
-        data['Age'] = data['Age'].apply(lambda x : 0 if 0 <= x < 2 else 1 if 2 <= x < 5 else 2 if 5 <= x < 13 else 3 if 13 <= x < 20 else 4 if 20 <= x < 40 else 5 if 40 <= x < 60 else 6)
-        # Separate by name initials
-        data['NameInitials'] = data['Name'].apply(lambda name : ord(name.split(' ')[0][0].lower()) - 96)
-        data['LastNameInitials'] = data['Name'].apply(lambda name : ord(name.split(' ')[1][0].lower()) - 96)
         # Remove unnecessary columns
         data.drop(['PassengerNumber', 'Name'], axis=1, inplace=True)
         return data
@@ -183,7 +183,9 @@ class DataHandler:
             top_corr_indices = data.corr().abs().nlargest(top_features + 1, result_label)[result_label].index
             top_corr_indices = top_corr_indices.drop(result_label)
             self.relevant_columns = top_corr_indices
-        data = pd.concat([data[self.relevant_columns], data[result_label]], axis=1)
+            data = pd.concat([data[self.relevant_columns], data[result_label]], axis=1)
+        else:
+            data = data[self.relevant_columns]
         return data
 
     # Process original data before uploading to database
@@ -194,10 +196,12 @@ class DataHandler:
         # Get id column
         id_column = data.columns[id_index]
         # Clean data
-        if not sample:
-            data = self.clean_data(data, id_column, self.nan_threshold)
+        data = self.clean_data(data, id_column, self.nan_threshold)
         # Perform feature engineering
+        for column in ['RoomService', 'FoodCourt', 'ShoppingMall', 'Spa', 'VRDeck']:
+            data.loc[data['CryoSleep'] == True, column] = 0.0
         data['CryoSleep'] = data['CryoSleep'].apply(lambda val: "CryoSlept" if val else "NoCryoSleep")
+        data['VIP'] = data['VIP'].apply(lambda val: "IsVIP" if val else "NotVIP")
         data = self.engineer_data(data)
         data = self.encode_cat_data(data, self.ordinal_columns, self.non_ordinal_columns, sample=sample)
         # Move Transported column to the rightmost position
@@ -205,8 +209,12 @@ class DataHandler:
             temp_column = data[self.result_label]
             data.drop(self.result_label, axis=1, inplace=True)
             data.insert(data.shape[1], self.result_label, temp_column)
+            # Process outliers
+            """ factor = LocalOutlierFactor(contamination=0.025)
+            outliers = factor.fit_predict(data)
+            data = data[np.where(outliers == 1, True, False)] """
             # Oversample data
             data = self.oversample_data(data, self.result_label)
         # Get the most correlated columns
-        data = self.select_features(data, self.result_label, sample=sample, top_features=11)
+        data = self.select_features(data, self.result_label, sample=sample, top_features=15)
         return data
